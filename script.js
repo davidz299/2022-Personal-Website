@@ -1,411 +1,475 @@
-var script = {
-  data() {
-    return {
-      shopItems: [],
-      cartItems: []
-    };
-  },
-  mounted: function () {
-    axios
-      .get("https://s3-us-west-2.amazonaws.com/s.cdpn.io/1315882/shoes.json")
-      .then((res) => {
-        this.$data.shopItems = res.data.shoes;
-      });
-  },
-  methods: {
-    addToCart(item) {
-      if (!item.inCart) {
-        item.inCart = true;
-        const newItem = Object.assign({}, item, { count: 1 });
-        this.$data.cartItems.push(newItem);
-
-        const animationTarget = this.$refs[`addButton${item.id}`];
-        gsap.to(animationTarget, {
-          width: 46,
-          duration: 0.8,
-          ease: "power4"
+"use strict";
+var UserStatus;
+(function (UserStatus) {
+    UserStatus["LoggedIn"] = "Logged In";
+    UserStatus["LoggingIn"] = "Logging In";
+    UserStatus["LoggedOut"] = "Logged Out";
+    UserStatus["LogInError"] = "Log In Error";
+    UserStatus["VerifyingLogIn"] = "Verifying Log In";
+})(UserStatus || (UserStatus = {}));
+var Default;
+(function (Default) {
+    Default["PIN"] = "1234";
+})(Default || (Default = {}));
+var WeatherType;
+(function (WeatherType) {
+    WeatherType["Cloudy"] = "Cloudy";
+    WeatherType["Rainy"] = "Rainy";
+    WeatherType["Stormy"] = "Stormy";
+    WeatherType["Sunny"] = "Sunny";
+})(WeatherType || (WeatherType = {}));
+const defaultPosition = () => ({
+    left: 0,
+    x: 0
+});
+const N = {
+    clamp: (min, value, max) => Math.min(Math.max(min, value), max),
+    rand: (min, max) => Math.floor(Math.random() * (max - min + 1) + min)
+};
+const T = {
+    format: (date) => {
+        const hours = T.formatHours(date.getHours()), minutes = date.getMinutes(), seconds = date.getSeconds();
+        return `${hours}:${T.formatSegment(minutes)}`;
+    },
+    formatHours: (hours) => {
+        return hours % 12 === 0 ? 12 : hours % 12;
+    },
+    formatSegment: (segment) => {
+        return segment < 10 ? `0${segment}` : segment;
+    }
+};
+const LogInUtility = {
+    verify: async (pin) => {
+        return new Promise((resolve, reject) => {
+            setTimeout(() => {
+                if (pin === Default.PIN) {
+                    resolve(true);
+                }
+                else {
+                    reject(`Invalid pin: ${pin}`);
+                }
+            }, N.rand(300, 700));
         });
-      }
-      this.$nextTick(() => {
-        this.$refs.cartItems.scrollTop = this.$refs.cartItems.scrollHeight;
-      });
-    },
-
-    decrement(item) {
-      item.count--;
-      const targetShopItem = this.$data.shopItems.find(
-        (shopItem) => shopItem.id === item.id
-      );
-
-      this.$nextTick(function () {
-        if (item.count === 0) {
-          const animationTarget = this.$refs[`addButton${targetShopItem.id}`];
-          gsap.to(animationTarget, {
-            width: 136,
-            duration: 0.8,
-            ease: "power4"
-          });
-          targetShopItem.inCart = false;
-          const targetIndex = this.$data.cartItems.findIndex(
-            (cartItem) => cartItem.id === item.id
-          );
-          this.$data.cartItems.splice(targetIndex, 1);
-        }
-      });
-    },
-
-    increment(item) {
-      item.count++;
     }
-  }
 };
-
-function normalizeComponent(template, style, script, scopeId, isFunctionalTemplate, moduleIdentifier /* server only */, shadowMode, createInjector, createInjectorSSR, createInjectorShadow) {
-    if (typeof shadowMode !== 'boolean') {
-        createInjectorSSR = createInjector;
-        createInjector = shadowMode;
-        shadowMode = false;
-    }
-    // Vue.extend constructor export interop.
-    const options = typeof script === 'function' ? script.options : script;
-    // render functions
-    if (template && template.render) {
-        options.render = template.render;
-        options.staticRenderFns = template.staticRenderFns;
-        options._compiled = true;
-        // functional template
-        if (isFunctionalTemplate) {
-            options.functional = true;
+const useCurrentDateEffect = () => {
+    const [date, setDate] = React.useState(new Date());
+    React.useEffect(() => {
+        const interval = setInterval(() => {
+            const update = new Date();
+            if (update.getSeconds() !== date.getSeconds()) {
+                setDate(update);
+            }
+        }, 100);
+        return () => clearInterval(interval);
+    }, [date]);
+    return date;
+};
+const ScrollableComponent = (props) => {
+    const ref = React.useRef(null);
+    const [state, setStateTo] = React.useState({
+        grabbing: false,
+        position: defaultPosition()
+    });
+    const handleOnMouseDown = (e) => {
+        setStateTo(Object.assign(Object.assign({}, state), { grabbing: true, position: {
+                x: e.clientX,
+                left: ref.current.scrollLeft
+            } }));
+    };
+    const handleOnMouseMove = (e) => {
+        if (state.grabbing) {
+            const left = Math.max(0, state.position.left + (state.position.x - e.clientX));
+            ref.current.scrollLeft = left;
         }
-    }
-    // scopedId
-    if (scopeId) {
-        options._scopeId = scopeId;
-    }
-    let hook;
-    if (moduleIdentifier) {
-        // server build
-        hook = function (context) {
-            // 2.3 injection
-            context =
-                context || // cached call
-                    (this.$vnode && this.$vnode.ssrContext) || // stateful
-                    (this.parent && this.parent.$vnode && this.parent.$vnode.ssrContext); // functional
-            // 2.2 with runInNewContext: true
-            if (!context && typeof __VUE_SSR_CONTEXT__ !== 'undefined') {
-                context = __VUE_SSR_CONTEXT__;
-            }
-            // inject component styles
-            if (style) {
-                style.call(this, createInjectorSSR(context));
-            }
-            // register component module identifier for async chunk inference
-            if (context && context._registeredComponents) {
-                context._registeredComponents.add(moduleIdentifier);
-            }
-        };
-        // used by ssr in case component is cached and beforeCreate
-        // never gets called
-        options._ssrRegister = hook;
-    }
-    else if (style) {
-        hook = shadowMode
-            ? function (context) {
-                style.call(this, createInjectorShadow(context, this.$root.$options.shadowRoot));
-            }
-            : function (context) {
-                style.call(this, createInjector(context));
+    };
+    const handleOnMouseUp = () => {
+        if (state.grabbing) {
+            setStateTo(Object.assign(Object.assign({}, state), { grabbing: false }));
+        }
+    };
+    return (React.createElement("div", { ref: ref, className: classNames("scrollable-component", props.className), id: props.id, onMouseDown: handleOnMouseDown, onMouseMove: handleOnMouseMove, onMouseUp: handleOnMouseUp, onMouseLeave: handleOnMouseUp }, props.children));
+};
+const WeatherSnap = () => {
+    const [temperature] = React.useState(N.rand(65, 85));
+    return (React.createElement("span", { className: "weather" },
+        React.createElement("i", { className: "weather-type", className: "fa-duotone fa-sun" }),
+        React.createElement("span", { className: "weather-temperature-value" }, temperature),
+        React.createElement("span", { className: "weather-temperature-unit" }, "\u00B0F")));
+};
+const Reminder = () => {
+    return (React.createElement("div", { className: "reminder" },
+        React.createElement("div", { className: "reminder-icon" },
+            React.createElement("i", { className: "fa-regular fa-bell" })),
+        React.createElement("span", { className: "reminder-text" },
+            "Hey there! World cup at",
+            React.createElement("span", { className: "reminder-time" }, " 10AM"))));
+};
+const Time = () => {
+    const date = useCurrentDateEffect();
+    return (React.createElement("span", { className: "time" }, T.format(date)));
+};
+const Info = (props) => {
+    return (React.createElement("div", { id: props.id, className: "info" },
+        React.createElement(Time, null),
+        React.createElement(WeatherSnap, null)));
+};
+const PinDigit = (props) => {
+    const [hidden, setHiddenTo] = React.useState(false);
+    React.useEffect(() => {
+        if (props.value) {
+            const timeout = setTimeout(() => {
+                setHiddenTo(true);
+            }, 500);
+            return () => {
+                setHiddenTo(false);
+                clearTimeout(timeout);
             };
-    }
-    if (hook) {
-        if (options.functional) {
-            // register for functional component in vue file
-            const originalRender = options.render;
-            options.render = function renderWithStyleInjection(h, context) {
-                hook.call(context);
-                return originalRender(h, context);
-            };
+        }
+    }, [props.value]);
+    return (React.createElement("div", { className: classNames("app-pin-digit", { focused: props.focused, hidden }) },
+        React.createElement("span", { className: "app-pin-digit-value" }, props.value || "")));
+};
+const Pin = () => {
+    const { userStatus, setUserStatusTo } = React.useContext(AppContext);
+    const [pin, setPinTo] = React.useState("");
+    const ref = React.useRef(null);
+    React.useEffect(() => {
+        if (userStatus === UserStatus.LoggingIn || userStatus === UserStatus.LogInError) {
+            ref.current.focus();
         }
         else {
-            // inject component registration as beforeCreate hook
-            const existing = options.beforeCreate;
-            options.beforeCreate = existing ? [].concat(existing, hook) : [hook];
+            setPinTo("");
         }
-    }
-    return script;
-}
-
-const isOldIE = typeof navigator !== 'undefined' &&
-    /msie [6-9]\\b/.test(navigator.userAgent.toLowerCase());
-function createInjector(context) {
-    return (id, style) => addStyle(id, style);
-}
-let HEAD;
-const styles = {};
-function addStyle(id, css) {
-    const group = isOldIE ? css.media || 'default' : id;
-    const style = styles[group] || (styles[group] = { ids: new Set(), styles: [] });
-    if (!style.ids.has(id)) {
-        style.ids.add(id);
-        let code = css.source;
-        if (css.map) {
-            // https://developer.chrome.com/devtools/docs/javascript-debugging
-            // this makes source maps inside style tags work properly in Chrome
-            code += '\n/*# sourceURL=' + css.map.sources[0] + ' */';
-            // http://stackoverflow.com/a/26603875
-            code +=
-                '\n/*# sourceMappingURL=data:application/json;base64,' +
-                    btoa(unescape(encodeURIComponent(JSON.stringify(css.map)))) +
-                    ' */';
-        }
-        if (!style.element) {
-            style.element = document.createElement('style');
-            style.element.type = 'text/css';
-            if (css.media)
-                style.element.setAttribute('media', css.media);
-            if (HEAD === undefined) {
-                HEAD = document.head || document.getElementsByTagName('head')[0];
-            }
-            HEAD.appendChild(style.element);
-        }
-        if ('styleSheet' in style.element) {
-            style.styles.push(code);
-            style.element.styleSheet.cssText = style.styles
-                .filter(Boolean)
-                .join('\n');
-        }
-        else {
-            const index = style.ids.size - 1;
-            const textNode = document.createTextNode(code);
-            const nodes = style.element.childNodes;
-            if (nodes[index])
-                style.element.removeChild(nodes[index]);
-            if (nodes.length)
-                style.element.insertBefore(textNode, nodes[index]);
-            else
-                style.element.appendChild(textNode);
-        }
-    }
-}
-
-/* script */
-const __vue_script__ = script;
-
-/* template */
-var __vue_render__ = function() {
-  var _vm = this;
-  var _h = _vm.$createElement;
-  var _c = _vm._self._c || _h;
-  return _c("div", { staticClass: "wrapper" }, [
-    _c("div", { staticClass: "screen -left" }, [
-      _vm._m(0),
-      _c("div", { staticClass: "title" }, [_vm._v("Trending Shoes")]),
-      _c(
-        "div",
-        { staticClass: "shop-items" },
-        _vm._l(_vm.shopItems, function(item) {
-          return _c("div", { staticClass: "item" }, [
-            _c("div", { staticClass: "item-block" }, [
-              _c(
-                "div",
-                {
-                  staticClass: "image-area",
-                  style: { backgroundColor: item.color }
-                },
-                [
-                  _c("img", {
-                    staticClass: "image",
-                    attrs: { src: item.image }
-                  })
-                ]
-              ),
-              _c("div", { staticClass: "name" }, [_vm._v(_vm._s(item.name))]),
-              _c("div", { staticClass: "description" }, [
-                _vm._v(_vm._s(item.description))
-              ]),
-              _c("div", { staticClass: "bottom-area" }, [
-                _c("div", { staticClass: "price" }, [
-                  _vm._v("$" + _vm._s(item.price))
-                ]),
-                _c(
-                  "div",
-                  {
-                    ref: "addButton" + item.id,
-                    refInFor: true,
-                    staticClass: "button",
-                    class: { "-active": item.inCart },
-                    on: {
-                      click: function($event) {
-                        return _vm.addToCart(item)
-                      }
+    }, [userStatus]);
+    React.useEffect(() => {
+        if (pin.length === 4) {
+            const verify = async () => {
+                try {
+                    setUserStatusTo(UserStatus.VerifyingLogIn);
+                    if (await LogInUtility.verify(pin)) {
+                        setUserStatusTo(UserStatus.LoggedIn);
                     }
-                  },
-                  [
-                    _c(
-                      "transition",
-                      { attrs: { name: "buttonText", mode: "out-in" } },
-                      [
-                        !item.inCart
-                          ? _c("p", [_vm._v("ADD TO CART")])
-                          : _c("div", { staticClass: "cover" }, [
-                              _c("div", { staticClass: "check" })
-                            ])
-                      ]
-                    )
-                  ],
-                  1
-                )
-              ])
-            ])
-          ])
-        }),
-        0
-      )
-    ]),
-    _c(
-      "div",
-      { ref: "cartItems", staticClass: "screen -right" },
-      [
-        _vm._m(1),
-        _c("div", { staticClass: "title" }, [_vm._v("Your cart")]),
-        _c("transition", { attrs: { name: "noContent" } }, [
-          _vm.$data.cartItems.length === 0
-            ? _c("div", { staticClass: "no-content" }, [
-                _c("p", { staticClass: "text" }, [
-                  _vm._v("Your cart is empty.")
-                ])
-              ])
-            : _vm._e()
-        ]),
-        _c(
-          "div",
-          { staticClass: "cart-items" },
-          [
-            _c(
-              "transition-group",
-              { attrs: { name: "cartList", tag: "div" } },
-              _vm._l(_vm.$data.cartItems, function(item) {
-                return _c("div", { key: item.id, staticClass: "cart-item" }, [
-                  _c("div", { staticClass: "left" }, [
-                    _c("div", { staticClass: "cart-image" }, [
-                      _c("div", { staticClass: "image-wrapper" }, [
-                        _c("img", {
-                          staticClass: "image",
-                          attrs: { src: item.image }
-                        })
-                      ])
-                    ])
-                  ]),
-                  _c("div", { staticClass: "right" }, [
-                    _c("div", { staticClass: "name" }, [
-                      _vm._v(_vm._s(item.name))
-                    ]),
-                    _c("div", { staticClass: "price" }, [
-                      _vm._v("$" + _vm._s(item.price))
-                    ]),
-                    _c("div", { staticClass: "count" }, [
-                      _c(
-                        "div",
-                        {
-                          staticClass: "button",
-                          on: {
-                            click: function($event) {
-                              return _vm.decrement(item)
-                            }
-                          }
-                        },
-                        [_vm._v("<")]
-                      ),
-                      _c("div", { staticClass: "number" }, [
-                        _vm._v(_vm._s(item.count))
-                      ]),
-                      _c(
-                        "div",
-                        {
-                          staticClass: "button",
-                          on: {
-                            click: function($event) {
-                              return _vm.increment(item)
-                            }
-                          }
-                        },
-                        [_vm._v(">")]
-                      )
-                    ])
-                  ])
-                ])
-              }),
-              0
-            )
-          ],
-          1
-        )
-      ],
-      1
-    )
-  ])
+                }
+                catch (err) {
+                    console.error(err);
+                    setUserStatusTo(UserStatus.LogInError);
+                }
+            };
+            verify();
+        }
+        if (userStatus === UserStatus.LogInError) {
+            setUserStatusTo(UserStatus.LoggingIn);
+        }
+    }, [pin]);
+    const handleOnClick = () => {
+        ref.current.focus();
+    };
+    const handleOnCancel = () => {
+        setUserStatusTo(UserStatus.LoggedOut);
+    };
+    const handleOnChange = (e) => {
+        if (e.target.value.length <= 4) {
+            setPinTo(e.target.value.toString());
+        }
+    };
+    const getCancelText = () => {
+        return (React.createElement("span", { id: "app-pin-cancel-text", onClick: handleOnCancel }, "Cancel"));
+    };
+    const getErrorText = () => {
+        if (userStatus === UserStatus.LogInError) {
+            return (React.createElement("span", { id: "app-pin-error-text" }, "Invalid"));
+        }
+    };
+    return (React.createElement("div", { id: "app-pin-wrapper" },
+        React.createElement("input", { disabled: userStatus !== UserStatus.LoggingIn && userStatus !== UserStatus.LogInError, id: "app-pin-hidden-input", maxLength: 4, ref: ref, type: "number", value: pin, onChange: handleOnChange }),
+        React.createElement("div", { id: "app-pin", onClick: handleOnClick },
+            React.createElement(PinDigit, { focused: pin.length === 0, value: pin[0] }),
+            React.createElement(PinDigit, { focused: pin.length === 1, value: pin[1] }),
+            React.createElement(PinDigit, { focused: pin.length === 2, value: pin[2] }),
+            React.createElement(PinDigit, { focused: pin.length === 3, value: pin[3] })),
+        React.createElement("h3", { id: "app-pin-label" },
+            "Enter PIN (1234) ",
+            getErrorText(),
+            " ",
+            getCancelText())));
 };
-var __vue_staticRenderFns__ = [
-  function() {
-    var _vm = this;
-    var _h = _vm.$createElement;
-    var _c = _vm._self._c || _h;
-    return _c("div", { staticClass: "app-bar" }, [
-      _c("img", {
-        staticClass: "logo",
-        attrs: {
-          src:
-            "https://s3-us-west-2.amazonaws.com/s.cdpn.io/1315882/pngwave.png"
+const MenuSection = (props) => {
+    const getContent = () => {
+        if (props.scrollable) {
+            return (React.createElement(ScrollableComponent, { className: "menu-section-content" }, props.children));
         }
-      })
-    ])
-  },
-  function() {
-    var _vm = this;
-    var _h = _vm.$createElement;
-    var _c = _vm._self._c || _h;
-    return _c("div", { staticClass: "app-bar" }, [
-      _c("img", {
-        staticClass: "logo",
-        attrs: {
-          src:
-            "https://s3-us-west-2.amazonaws.com/s.cdpn.io/1315882/pngwave.png"
+        return (React.createElement("div", { className: "menu-section-content" }, props.children));
+    };
+    return (React.createElement("div", { id: props.id, className: "menu-section" },
+        React.createElement("div", { className: "menu-section-title" },
+            React.createElement("i", { className: props.icon }),
+            React.createElement("span", { className: "menu-section-title-text" }, props.title)),
+        getContent()));
+};
+const QuickNav = () => {
+    const getItems = () => {
+        return [{
+                id: 1,
+                label: "Weather"
+            }, {
+                id: 2,
+                label: "Food"
+            }, {
+                id: 3,
+                label: "Apps"
+            }, {
+                id: 4,
+                label: "Movies"
+            }].map((item) => {
+            return (React.createElement("div", { key: item.id, className: "quick-nav-item clear-button" },
+                React.createElement("span", { className: "quick-nav-item-label" }, item.label)));
+        });
+    };
+    return (React.createElement(ScrollableComponent, { id: "quick-nav" }, getItems()));
+};
+const Weather = () => {
+    const getDays = () => {
+        return [{
+                id: 1,
+                name: "Mon",
+                temperature: N.rand(60, 80),
+                weather: WeatherType.Sunny
+            }, {
+                id: 2,
+                name: "Tues",
+                temperature: N.rand(60, 80),
+                weather: WeatherType.Sunny
+            }, {
+                id: 3,
+                name: "Wed",
+                temperature: N.rand(60, 80),
+                weather: WeatherType.Cloudy
+            }, {
+                id: 4,
+                name: "Thurs",
+                temperature: N.rand(60, 80),
+                weather: WeatherType.Rainy
+            }, {
+                id: 5,
+                name: "Fri",
+                temperature: N.rand(60, 80),
+                weather: WeatherType.Stormy
+            }, {
+                id: 6,
+                name: "Sat",
+                temperature: N.rand(60, 80),
+                weather: WeatherType.Sunny
+            }, {
+                id: 7,
+                name: "Sun",
+                temperature: N.rand(60, 80),
+                weather: WeatherType.Cloudy
+            }].map((day) => {
+            const getIcon = () => {
+                switch (day.weather) {
+                    case WeatherType.Cloudy:
+                        return "fa-duotone fa-clouds";
+                    case WeatherType.Rainy:
+                        return "fa-duotone fa-cloud-drizzle";
+                    case WeatherType.Stormy:
+                        return "fa-duotone fa-cloud-bolt";
+                    case WeatherType.Sunny:
+                        return "fa-duotone fa-sun";
+                }
+            };
+            return (React.createElement("div", { key: day.id, className: "day-card" },
+                React.createElement("div", { className: "day-card-content" },
+                    React.createElement("span", { className: "day-weather-temperature" },
+                        day.temperature,
+                        React.createElement("span", { className: "day-weather-temperature-unit" }, "\u00B0F")),
+                    React.createElement("i", { className: classNames("day-weather-icon", getIcon(), day.weather.toLowerCase()) }),
+                    React.createElement("span", { className: "day-name" }, day.name))));
+        });
+    };
+    return (React.createElement(MenuSection, { icon: "fa-solid fa-sun", id: "weather-section", scrollable: true, title: "How's it look out there?" }, getDays()));
+};
+const Tools = () => {
+    const getTools = () => {
+        return [{
+                icon: "fa-solid fa-cloud-sun",
+                id: 1,
+                image: "https://images.unsplash.com/photo-1492011221367-f47e3ccd77a0?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxzZWFyY2h8MTV8fHdlYXRoZXJ8ZW58MHx8MHx8&auto=format&fit=crop&w=500&q=60",
+                label: "Weather",
+                name: "Cloudly"
+            }, {
+                icon: "fa-solid fa-calculator-simple",
+                id: 2,
+                image: "https://images.unsplash.com/photo-1587145820266-a5951ee6f620?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxzZWFyY2h8NXx8Y2FsY3VsYXRvcnxlbnwwfHwwfHw%3D&auto=format&fit=crop&w=500&q=60",
+                label: "Calc",
+                name: "Mathio"
+            }, {
+                icon: "fa-solid fa-piggy-bank",
+                id: 3,
+                image: "https://images.unsplash.com/photo-1579621970588-a35d0e7ab9b6?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxzZWFyY2h8OHx8YmFua3xlbnwwfHwwfHw%3D&auto=format&fit=crop&w=500&q=60",
+                label: "Bank",
+                name: "Cashy"
+            }, {
+                icon: "fa-solid fa-plane",
+                id: 4,
+                image: "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxzZWFyY2h8Mnx8YWlycGxhbmV8ZW58MHx8MHx8&auto=format&fit=crop&w=500&q=60",
+                label: "Travel",
+                name: "Fly-er-io-ly"
+            }, {
+                icon: "fa-solid fa-gamepad-modern",
+                id: 5,
+                image: "https://images.unsplash.com/photo-1612287230202-1ff1d85d1bdf?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxzZWFyY2h8NXx8dmlkZW8lMjBnYW1lc3xlbnwwfHwwfHw%3D&auto=format&fit=crop&w=500&q=60",
+                label: "Games",
+                name: "Gamey"
+            }, {
+                icon: "fa-solid fa-video",
+                id: 6,
+                image: "https://images.unsplash.com/photo-1578022761797-b8636ac1773c?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxzZWFyY2h8MTJ8fHZpZGVvJTIwY2hhdHxlbnwwfHwwfHw%3D&auto=format&fit=crop&w=500&q=60",
+                label: "Video Chat",
+                name: "Chatty"
+            }].map((tool) => {
+            const styles = {
+                backgroundImage: `url(${tool.image})`
+            };
+            return (React.createElement("div", { key: tool.id, className: "tool-card" },
+                React.createElement("div", { className: "tool-card-background background-image", style: styles }),
+                React.createElement("div", { className: "tool-card-content" },
+                    React.createElement("div", { className: "tool-card-content-header" },
+                        React.createElement("span", { className: "tool-card-label" }, tool.label),
+                        React.createElement("span", { className: "tool-card-name" }, tool.name)),
+                    React.createElement("i", { className: classNames(tool.icon, "tool-card-icon") }))));
+        });
+    };
+    return (React.createElement(MenuSection, { icon: "fa-solid fa-toolbox", id: "tools-section", title: "What's Appening?" }, getTools()));
+};
+const Restaurants = () => {
+    const getRestaurants = () => {
+        return [{
+                desc: "The best burgers in town",
+                id: 1,
+                image: "https://images.unsplash.com/photo-1606131731446-5568d87113aa?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxzZWFyY2h8MXx8YnVyZ2Vyc3xlbnwwfHwwfHw%3D&auto=format&fit=crop&w=500&q=60",
+                title: "Burgers"
+            }, {
+                desc: "The worst ice-cream around",
+                id: 2,
+                image: "https://images.unsplash.com/photo-1576506295286-5cda18df43e7?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxzZWFyY2h8M3x8aWNlJTIwY3JlYW18ZW58MHx8MHx8&auto=format&fit=crop&w=500&q=60",
+                title: "Ice Cream"
+            }, {
+                desc: "This 'Za be gettin down",
+                id: 3,
+                image: "https://images.unsplash.com/photo-1590947132387-155cc02f3212?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxzZWFyY2h8Nnx8cGl6emF8ZW58MHx8MHx8&auto=format&fit=crop&w=500&q=60",
+                title: "Pizza"
+            }, {
+                desc: "BBQ ain't need no rhyme",
+                id: 4,
+                image: "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxzZWFyY2h8OXx8YmFyYmVxdWV8ZW58MHx8MHx8&auto=format&fit=crop&w=500&q=60",
+                title: "BBQ"
+            }].map((restaurant) => {
+            const styles = {
+                backgroundImage: `url(${restaurant.image})`
+            };
+            return (React.createElement("div", { key: restaurant.id, className: "restaurant-card background-image", style: styles },
+                React.createElement("div", { className: "restaurant-card-content" },
+                    React.createElement("div", { className: "restaurant-card-content-items" },
+                        React.createElement("span", { className: "restaurant-card-title" }, restaurant.title),
+                        React.createElement("span", { className: "restaurant-card-desc" }, restaurant.desc)))));
+        });
+    };
+    return (React.createElement(MenuSection, { icon: "fa-regular fa-pot-food", id: "restaurants-section", title: "Get it delivered!" }, getRestaurants()));
+};
+const Movies = () => {
+    const getMovies = () => {
+        return [{
+                desc: "A tale of some people watching over a large portion of space.",
+                id: 1,
+                icon: "fa-solid fa-galaxy",
+                image: "https://images.unsplash.com/photo-1596727147705-61a532a659bd?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxzZWFyY2h8Mnx8bWFydmVsfGVufDB8fDB8fA%3D%3D&auto=format&fit=crop&w=500&q=60",
+                title: "Protectors of the Milky Way"
+            }, {
+                desc: "Some people leave their holes to disrupt some things.",
+                id: 2,
+                icon: "fa-solid fa-hat-wizard",
+                image: "https://images.unsplash.com/photo-1535666669445-e8c15cd2e7d9?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxzZWFyY2h8MXx8bG9yZCUyMG9mJTIwdGhlJTIwcmluZ3N8ZW58MHx8MHx8&auto=format&fit=crop&w=500&q=60",
+                title: "Hole People"
+            }, {
+                desc: "A boy with a dent in his head tries to stop a bad guy. And by bad I mean bad at winning.",
+                id: 3,
+                icon: "fa-solid fa-broom-ball",
+                image: "https://images.unsplash.com/photo-1632266484284-a11d9e3a460a?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxzZWFyY2h8MTZ8fGhhcnJ5JTIwcG90dGVyfGVufDB8fDB8fA%3D%3D&auto=format&fit=crop&w=500&q=60",
+                title: "Pot of Hair"
+            }, {
+                desc: "A long drawn out story of some people fighting over some space. Cuz there isn't enough of it.",
+                id: 4,
+                icon: "fa-solid fa-starship-freighter",
+                image: "https://images.unsplash.com/photo-1533613220915-609f661a6fe1?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxzZWFyY2h8MXx8c3RhciUyMHdhcnN8ZW58MHx8MHx8&auto=format&fit=crop&w=500&q=60",
+                title: "Area Fights"
+            }].map((movie) => {
+            const styles = {
+                backgroundImage: `url(${movie.image})`
+            };
+            const id = `movie-card-${movie.id}`;
+            return (React.createElement("div", { key: movie.id, id: id, className: "movie-card" },
+                React.createElement("div", { className: "movie-card-background background-image", style: styles }),
+                React.createElement("div", { className: "movie-card-content" },
+                    React.createElement("div", { className: "movie-card-info" },
+                        React.createElement("span", { className: "movie-card-title" }, movie.title),
+                        React.createElement("span", { className: "movie-card-desc" }, movie.desc)),
+                    React.createElement("i", { className: movie.icon }))));
+        });
+    };
+    return (React.createElement(MenuSection, { icon: "fa-solid fa-camera-movie", id: "movies-section", scrollable: true, title: "Popcorn time!" }, getMovies()));
+};
+const UserStatusButton = (props) => {
+    const { userStatus, setUserStatusTo } = React.useContext(AppContext);
+    const handleOnClick = () => {
+        setUserStatusTo(props.userStatus);
+    };
+    return (React.createElement("button", { id: props.id, className: "user-status-button clear-button", disabled: userStatus === props.userStatus, type: "button", onClick: handleOnClick },
+        React.createElement("i", { className: props.icon })));
+};
+const Menu = () => {
+    return (React.createElement("div", { id: "app-menu" },
+        React.createElement("div", { id: "app-menu-content-wrapper" },
+            React.createElement("div", { id: "app-menu-content" },
+                React.createElement("div", { id: "app-menu-content-header" },
+                    React.createElement("div", { className: "app-menu-content-header-section" },
+                        React.createElement(Info, { id: "app-menu-info" }),
+                        React.createElement(Reminder, null)),
+                    React.createElement("div", { className: "app-menu-content-header-section" },
+                        React.createElement(UserStatusButton, { icon: "fa-solid fa-arrow-right-from-arc", id: "sign-out-button", userStatus: UserStatus.LoggedOut }))),
+                React.createElement(Weather, null),
+                React.createElement(Restaurants, null),
+                React.createElement(Tools, null),
+                React.createElement(Movies, null)))));
+};
+const Background = () => {
+    const { userStatus, setUserStatusTo } = React.useContext(AppContext);
+    const handleOnClick = () => {
+        if (userStatus === UserStatus.LoggedOut) {
+            setUserStatusTo(UserStatus.LoggingIn);
         }
-      })
-    ])
-  }
-];
-__vue_render__._withStripped = true;
-
-  /* style */
-  const __vue_inject_styles__ = function (inject) {
-    if (!inject) return
-    inject("data-v-fa130f0c_0", { source: "body {\n  font-family: \"Rubik\", sans-serif;\n  color: #303841;\n}\n.wrapper {\n  height: 100vh;\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  position: relative;\n  flex-wrap: wrap;\n  padding: 40px 20px;\n  max-width: 720px;\n  margin: 0 auto;\n}\n.wrapper::before {\n  content: \"\";\n  display: block;\n  position: fixed;\n  width: 300%;\n  height: 100%;\n  top: 50%;\n  left: 50%;\n  border-radius: 100%;\n  transform: translateX(-50%) skewY(-8deg);\n  background-color: #0078FF;\n  z-index: -1;\n  animation: wave 8s ease-in-out infinite alternate;\n}\n@keyframes wave {\n0% {\n    transform: translateX(-50%) skew(0deg, -8deg);\n}\n100% {\n    transform: translateX(-30%) skew(8deg, -4deg);\n}\n}\n.screen {\n  background-color: #B4C8FF;\n  box-sizing: border-box;\n  width: 340px;\n  height: 600px;\n  box-shadow: 0 3.2px 2.2px rgba(0, 0, 0, 0.02), 0 7px 5.4px rgba(0, 0, 0, 0.028), 0 12.1px 10.1px rgba(0, 0, 0, 0.035), 0 19.8px 18.1px rgba(0, 0, 0, 0.042), 0 34.7px 33.8px rgba(0, 0, 0, 0.05), 0 81px 81px rgba(0, 0, 0, 0.07);\n  border-radius: 30px;\n  overflow-y: scroll;\n  padding: 0 28px;\n  position: relative;\n  margin-bottom: 20px;\n}\n.screen::before {\n  content: \"\";\n  display: block;\n  position: absolute;\n  width: 300px;\n  height: 300px;\n  border-radius: 100%;\n  background-color: #B4C8FF;\n  top: -20%;\n  left: -50%;\n  z-index: 0;\n}\n.screen::-webkit-scrollbar {\n  display: none;\n}\n.screen > .title {\n  font-size: 24px;\n  font-weight: bold;\n  margin: 20px 0;\n  position: relative;\n}\n.app-bar {\n  padding: 12px 0;\n  position: relative;\n}\n.app-bar > .logo {\n  display: block;\n  width: 50px;\n}\n.shop-items {\n  position: relative;\n}\n.item-block {\n  padding: 40px 0 70px;\n}\n.item-block:first-child {\n  padding-top: 0;\n}\n.item-block > .image-area {\n  border-radius: 30px;\n  height: 380px;\n  display: flex;\n  align-items: center;\n  overflow: hidden;\n}\n.item-block > .image-area > .image {\n  display: block;\n  width: 100%;\n  filter: drop-shadow(0 30px 20px rgba(0, 0, 0, 0.2));\n  transform: rotate(-24deg);\n  margin-left: -16px;\n}\n.item-block > .name {\n  font-size: 20px;\n  font-weight: bold;\n  margin: 26px 0 20px;\n  line-height: 1.5;\n}\n.item-block > .description {\n  font-size: 13px;\n  color: #777;\n  line-height: 1.8;\n  margin-bottom: 20px;\n}\n.item-block > .bottom-area {\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n}\n.item-block > .bottom-area > .price {\n  font-size: 18px;\n  font-weight: bold;\n}\n.item-block > .bottom-area > .button {\n  cursor: pointer;\n  background-color: #0078FF;\n  font-weight: bold;\n  font-size: 14px;\n  box-sizing: border-box;\n  height: 46px;\n  padding: 16px 20px;\n  border-radius: 100px;\n  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);\n  transition: box-shadow 0.4s, background-color 0.2s;\n  user-select: none;\n  white-space: nowrap;\n  position: relative;\n  display: flex;\n  align-items: center;\n  overflow: hidden;\n}\n.item-block > .bottom-area > .button:hover {\n  background-color: #e7edff;\n  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);\n}\n.item-block > .bottom-area > .button.-active {\n  pointer-events: none;\n  cursor: default;\n}\n.item-block > .bottom-area > .button > .cover {\n  width: 16px;\n  height: 16px;\n  position: absolute;\n  display: flex;\n  justify-content: center;\n  align-items: center;\n}\n.item-block > .bottom-area > .button > .cover > .check {\n  width: 100%;\n  height: 100%;\n  transform: translate(-100%, -73%) rotate(-45deg);\n  position: absolute;\n  left: 50%;\n  top: 50%;\n}\n.item-block > .bottom-area > .button > .cover > .check::before, .item-block > .bottom-area > .button > .cover > .check::after {\n  content: \"\";\n  display: block;\n  background-color: #303841;\n  position: absolute;\n  left: 0;\n  bottom: 0;\n  border-radius: 10px;\n}\n.item-block > .bottom-area > .button > .cover > .check::before {\n  width: 3px;\n  height: 50%;\n}\n.item-block > .bottom-area > .button > .cover > .check::after {\n  width: 100%;\n  height: 3px;\n}\n.cart-items {\n  position: relative;\n}\n.no-content {\n  position: relative;\n}\n.no-content > .text {\n  font-size: 14px;\n}\n.cart-item {\n  display: flex;\n  padding: 20px 0;\n}\n.cart-item > .right > .name {\n  font-size: 14px;\n  font-weight: bold;\n  line-height: 1.5;\n  margin-bottom: 10px;\n}\n.cart-item > .right > .price {\n  font-size: 20px;\n  font-weight: bold;\n  margin-bottom: 16px;\n}\n.cart-item > .right > .count {\n  display: flex;\n  align-items: center;\n}\n.cart-item > .right > .count > .number {\n  font-size: 14px;\n  margin: 0 14px;\n  width: 20px;\n  text-align: center;\n}\n.cart-item > .right > .count .button {\n  cursor: pointer;\n  width: 28px;\n  height: 28px;\n  border-radius: 100%;\n  background-color: #eee;\n  font-size: 16px;\n  font-weight: bold;\n  display: flex;\n  justify-content: center;\n  align-items: center;\n  transition: 0.2s;\n  user-select: none;\n}\n.cart-item > .right > .count .button:hover {\n  background-color: #ddd;\n}\n.cart-image {\n  width: 90px;\n  height: 90px;\n  border-radius: 100%;\n  background-color: #eee;\n  margin-right: 34px;\n}\n.cart-image > .image-wrapper > .image {\n  display: block;\n  width: 140%;\n  transform: rotate(-28deg) translateY(-40px);\n  filter: drop-shadow(0 30px 20px rgba(0, 0, 0, 0.2));\n}\n.buttonText-leave-active,\n.buttonText-enter-active {\n  transition: opacity 0.2s, top 0.35s;\n}\n.buttonText-leave-to,\n.buttonText-enter {\n  opacity: 0;\n}\n.cartList-enter-active {\n  transition: all 2s;\n}\n.cartList-enter-active > .right > .name,\n.cartList-enter-active > .right > .price {\n  transition: 0.4s;\n}\n.cartList-enter-active > .right > .name {\n  transition-delay: 0.7s;\n}\n.cartList-enter-active > .right > .price {\n  transition-delay: 0.85s;\n}\n.cartList-enter-active > .right > .count {\n  transition: opacity 0.4s;\n  transition-delay: 1s;\n}\n.cartList-enter-active .cart-image {\n  transition: 0.5s cubic-bezier(0.79, 0.01, 0.22, 1);\n}\n.cartList-enter-active .cart-image > .image-wrapper {\n  transition: 0.5s cubic-bezier(0.79, 0.01, 0.22, 1) 0.1s;\n}\n.cartList-enter > .right > .name,\n.cartList-enter > .right > .price {\n  opacity: 0;\n  transform: translateX(30px);\n}\n.cartList-enter > .right .count {\n  opacity: 0;\n}\n.cartList-enter .cart-image {\n  transform: scale(0);\n}\n.cartList-enter .cart-image > .image-wrapper {\n  transform: scale(0);\n}\n.cartList-leave-active {\n  transition: 0.7s cubic-bezier(0.79, 0.01, 0.22, 1);\n  position: absolute;\n}\n.cartList-leave-to {\n  transform: scale(0);\n  opacity: 0;\n}\n.cartList-move {\n  transition: 0.7s cubic-bezier(0.79, 0.01, 0.22, 1);\n}\n.noContent-enter-active, .noContent-leave-active {\n  transition: opacity 0.5s;\n  position: absolute;\n}\n.noContent-enter, .noContent-leave-to {\n  opacity: 0;\n}\n\n/*# sourceMappingURL=pen.vue.map */", map: {"version":3,"sources":["/tmp/codepen/vuejs/src/pen.vue","pen.vue"],"names":[],"mappings":"AAoHA;EACA,gCAAA;EACA,cAPA;AC5GA;ADsHA;EACA,aAAA;EACA,aAAA;EACA,mBAAA;EACA,8BAAA;EACA,kBAAA;EACA,eAAA;EACA,kBAAA;EACA,gBAAA;EACA,cAAA;ACnHA;ADqHA;EACA,WAAA;EACA,cAAA;EACA,eAAA;EACA,WAAA;EACA,YAAA;EACA,QAAA;EACA,SAAA;EACA,mBAAA;EACA,wCAAA;EACA,yBA7BA;EA8BA,WAAA;EACA,iDAAA;ACnHA;ADsHA;AACA;IACA,6CAAA;ACpHE;ADuHF;IACA,6CAAA;ACrHE;AACF;ADyHA;EACA,yBA/CA;EAgDA,sBAAA;EACA,YAAA;EACA,aAAA;EACA,iOAAA;EAIA,mBAAA;EACA,kBAAA;EACA,eAAA;EACA,kBAAA;EACA,mBAAA;ACzHA;AD2HA;EACA,WAAA;EACA,cAAA;EACA,kBAAA;EACA,YAAA;EACA,aAAA;EACA,mBAAA;EACA,yBApEA;EAqEA,SAAA;EACA,UAAA;EACA,UAAA;ACzHA;AD4HA;EACA,aAAA;AC1HA;AD6HA;EACA,eAAA;EACA,iBAAA;EACA,cAAA;EACA,kBAAA;AC3HA;AD+HA;EACA,eAAA;EACA,kBAAA;AC5HA;AD8HA;EACA,cAAA;EACA,WAAA;AC5HA;ADgIA;EACA,kBAAA;AC7HA;ADgIA;EACA,oBAAA;AC7HA;AD+HA;EACA,cAAA;AC7HA;ADgIA;EACA,mBAAA;EACA,aAAA;EACA,aAAA;EACA,mBAAA;EACA,gBAAA;AC9HA;ADgIA;EACA,cAAA;EACA,WAAA;EACA,mDAAA;EACA,yBAAA;EACA,kBAAA;AC9HA;ADkIA;EACA,eAAA;EACA,iBAAA;EACA,mBAAA;EACA,gBAAA;AChIA;ADmIA;EACA,eAAA;EACA,WAAA;EACA,gBAAA;EACA,mBAAA;ACjIA;ADoIA;EACA,aAAA;EACA,8BAAA;EACA,mBAAA;AClIA;ADoIA;EACA,eAAA;EACA,iBAAA;AClIA;ADqIA;EACA,eAAA;EACA,yBApJA;EAqJA,iBAAA;EACA,eAAA;EACA,sBAAA;EACA,YAAA;EACA,kBAAA;EACA,oBAAA;EACA,wCAAA;EACA,kDAAA;EACA,iBAAA;EACA,mBAAA;EACA,kBAAA;EACA,aAAA;EACA,mBAAA;EACA,gBAAA;ACnIA;ADqIA;EACA,yBAAA;EACA,0CAAA;ACnIA;ADsIA;EACA,oBAAA;EACA,eAAA;ACpIA;ADuIA;EACA,WAAA;EACA,YAAA;EACA,kBAAA;EACA,aAAA;EACA,uBAAA;EACA,mBAAA;ACrIA;ADuIA;EACA,WAAA;EACA,YAAA;EACA,gDAAA;EACA,kBAAA;EACA,SAAA;EACA,QAAA;ACrIA;ADuIA;EAEA,WAAA;EACA,cAAA;EACA,yBApMA;EAqMA,kBAAA;EACA,OAAA;EACA,SAAA;EACA,mBAAA;ACtIA;ADyIA;EACA,UAAA;EACA,WAAA;ACvIA;AD0IA;EACA,WAAA;EACA,WAAA;ACxIA;ADgJA;EACA,kBAAA;AC7IA;ADgJA;EACA,kBAAA;AC7IA;AD+IA;EACA,eAAA;AC7IA;ADiJA;EACA,aAAA;EACA,eAAA;AC9IA;ADiJA;EACA,eAAA;EACA,iBAAA;EACA,gBAAA;EACA,mBAAA;AC/IA;ADkJA;EACA,eAAA;EACA,iBAAA;EACA,mBAAA;AChJA;ADmJA;EACA,aAAA;EACA,mBAAA;ACjJA;ADmJA;EACA,eAAA;EACA,cAAA;EACA,WAAA;EACA,kBAAA;ACjJA;ADoJA;EACA,eAAA;EACA,WAAA;EACA,YAAA;EACA,mBAAA;EACA,sBAAA;EACA,eAAA;EACA,iBAAA;EACA,aAAA;EACA,uBAAA;EACA,mBAAA;EACA,gBAAA;EACA,iBAAA;AClJA;ADoJA;EACA,sBAAA;AClJA;ADyJA;EACA,WAAA;EACA,YAAA;EACA,mBAAA;EACA,sBAAA;EACA,kBAAA;ACtJA;ADyJA;EACA,cAAA;EACA,WAAA;EACA,2CAAA;EACA,mDAAA;ACvJA;AD4JA;;EAEA,mCAAA;ACzJA;AD2JA;;EAEA,UAAA;ACxJA;AD2JA;EACA,kBAAA;ACxJA;AD2JA;;EAEA,gBAAA;ACzJA;AD4JA;EACA,sBAAA;AC1JA;AD6JA;EACA,uBAAA;AC3JA;AD8JA;EACA,wBAAA;EACA,oBAAA;AC5JA;ADgKA;EACA,kDAAA;AC9JA;ADgKA;EACA,uDAAA;AC9JA;ADsKA;;EAEA,UAAA;EACA,2BAAA;ACnKA;ADsKA;EACA,UAAA;ACpKA;ADwKA;EACA,mBAAA;ACtKA;ADwKA;EACA,mBAAA;ACtKA;AD2KA;EACA,kDAAA;EACA,kBAAA;ACzKA;AD4KA;EACA,mBAAA;EACA,UAAA;AC1KA;AD6KA;EACA,kDAAA;AC3KA;ADgLA;EAEA,wBAAA;EACA,kBAAA;AC9KA;ADiLA;EAEA,UAAA;AChLA;;AAEA,kCAAkC","file":"pen.vue","sourcesContent":["<template lang=\"pug\">\n.wrapper\n  .screen.-left\n    .app-bar\n     img.logo(src=\"https://s3-us-west-2.amazonaws.com/s.cdpn.io/1315882/pngwave.png\")\n    .title Trending Shoes\n    .shop-items\n      .item(v-for=\"item in shopItems\")\n        .item-block\n          .image-area(:style=\"{backgroundColor: item.color}\")\n            img.image(:src=\"item.image\")\n          .name {{ item.name }}\n          .description {{ item.description }}\n          .bottom-area\n            .price ${{ item.price }}\n            .button(@click=\"addToCart(item)\" :ref=\"'addButton' + item.id\" :class=\"{'-active': item.inCart}\")\n              transition(name=\"buttonText\" mode=\"out-in\")\n                p(v-if=\"!item.inCart\") ADD TO CART\n                .cover(v-else)\n                  .check\n  .screen.-right(ref=\"cartItems\")\n    .app-bar\n     img.logo(src=\"https://s3-us-west-2.amazonaws.com/s.cdpn.io/1315882/pngwave.png\")\n    .title Your cart\n    transition(name=\"noContent\")\n      .no-content(v-if=\"$data.cartItems.length === 0\")\n        p.text Your cart is empty.\n    .cart-items\n      transition-group(name=\"cartList\" tag=\"div\")\n        .cart-item(v-for=\"item in $data.cartItems\" :key=\"item.id\")\n          .left\n            .cart-image\n              .image-wrapper\n                img.image(:src=\"item.image\")\n          .right\n            .name {{item.name}}\n            .price ${{item.price}}\n            .count\n              .button(@click=\"decrement(item)\") <\n              .number {{item.count}}\n              .button(@click=\"increment(item)\") >\n    \n</template>\n\n<script>\nexport default {\n  data() {\n    return {\n      shopItems: [],\n      cartItems: []\n    };\n  },\n  mounted: function () {\n    axios\n      .get(\"https://s3-us-west-2.amazonaws.com/s.cdpn.io/1315882/shoes.json\")\n      .then((res) => {\n        this.$data.shopItems = res.data.shoes;\n      });\n  },\n  methods: {\n    addToCart(item) {\n      if (!item.inCart) {\n        item.inCart = true;\n        const newItem = Object.assign({}, item, { count: 1 });\n        this.$data.cartItems.push(newItem);\n\n        const animationTarget = this.$refs[`addButton${item.id}`];\n        gsap.to(animationTarget, {\n          width: 46,\n          duration: 0.8,\n          ease: \"power4\"\n        });\n      }\n      this.$nextTick(() => {\n        this.$refs.cartItems.scrollTop = this.$refs.cartItems.scrollHeight;\n      });\n    },\n\n    decrement(item) {\n      item.count--;\n      const targetShopItem = this.$data.shopItems.find(\n        (shopItem) => shopItem.id === item.id\n      );\n\n      this.$nextTick(function () {\n        if (item.count === 0) {\n          const animationTarget = this.$refs[`addButton${targetShopItem.id}`];\n          gsap.to(animationTarget, {\n            width: 136,\n            duration: 0.8,\n            ease: \"power4\"\n          });\n          targetShopItem.inCart = false;\n          const targetIndex = this.$data.cartItems.findIndex(\n            (cartItem) => cartItem.id === item.id\n          );\n          this.$data.cartItems.splice(targetIndex, 1);\n        }\n      });\n    },\n\n    increment(item) {\n      item.count++;\n    }\n  }\n};\n</script>\n\n<style lang=\"scss\">\n$white: #fff;\n$yellow: #f6c90e;\n$black: #303841;\n$lightblue: #B4C8FF;\n$blue: #0078FF;\n$orange: #FF9700;\n\nbody {\n  font-family: \"Rubik\", sans-serif;\n  color: $black;\n}\n\n.wrapper {\n  height: 100vh;\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  position: relative;\n  flex-wrap: wrap;\n  padding: 40px 20px;\n  max-width: 720px;\n  margin: 0 auto;\n\n  &::before {\n    content: \"\";\n    display: block;\n    position: fixed;\n    width: 300%;\n    height: 100%;\n    top: 50%;\n    left: 50%;\n    border-radius: 100%;\n    transform: translateX(-50%) skewY(-8deg);\n    background-color: $blue;\n    z-index: -1;\n    animation: wave 8s ease-in-out infinite alternate;\n  }\n\n  @keyframes wave {\n    0% {\n      transform: translateX(-50%) skew(0deg, -8deg);\n    }\n\n    100% {\n      transform: translateX(-30%) skew(8deg, -4deg);\n    }\n  }\n}\n\n.screen {\n  background-color: $lightblue;\n  box-sizing: border-box;\n  width: 340px;\n  height: 600px;\n  box-shadow: 0 3.2px 2.2px rgba(0, 0, 0, 0.02),\n    0 7px 5.4px rgba(0, 0, 0, 0.028), 0 12.1px 10.1px rgba(0, 0, 0, 0.035),\n    0 19.8px 18.1px rgba(0, 0, 0, 0.042), 0 34.7px 33.8px rgba(0, 0, 0, 0.05),\n    0 81px 81px rgba(0, 0, 0, 0.07);\n  border-radius: 30px;\n  overflow-y: scroll;\n  padding: 0 28px;\n  position: relative;\n  margin-bottom: 20px;\n\n  &::before {\n    content: \"\";\n    display: block;\n    position: absolute;\n    width: 300px;\n    height: 300px;\n    border-radius: 100%;\n    background-color: $lightblue;\n    top: -20%;\n    left: -50%;\n    z-index: 0;\n  }\n\n  &::-webkit-scrollbar {\n    display: none;\n  }\n\n  > .title {\n    font-size: 24px;\n    font-weight: bold;\n    margin: 20px 0;\n    position: relative;\n  }\n}\n\n.app-bar {\n  padding: 12px 0;\n  position: relative;\n\n  > .logo {\n    display: block;\n    width: 50px;\n  }\n}\n\n.shop-items {\n  position: relative;\n}\n\n.item-block {\n  padding: 40px 0 70px;\n\n  &:first-child {\n    padding-top: 0;\n  }\n\n  > .image-area {\n    border-radius: 30px;\n    height: 380px;\n    display: flex;\n    align-items: center;\n    overflow: hidden;\n\n    > .image {\n      display: block;\n      width: 100%;\n      filter: drop-shadow(0 30px 20px rgba(0, 0, 0, 0.2));\n      transform: rotate(-24deg);\n      margin-left: -16px;\n    }\n  }\n\n  > .name {\n    font-size: 20px;\n    font-weight: bold;\n    margin: 26px 0 20px;\n    line-height: 1.5;\n  }\n\n  > .description {\n    font-size: 13px;\n    color: #777;\n    line-height: 1.8;\n    margin-bottom: 20px;\n  }\n\n  > .bottom-area {\n    display: flex;\n    justify-content: space-between;\n    align-items: center;\n\n    > .price {\n      font-size: 18px;\n      font-weight: bold;\n    }\n\n    > .button {\n      cursor: pointer;\n      background-color: $blue;\n      font-weight: bold;\n      font-size: 14px;\n      box-sizing: border-box;\n      height: 46px;\n      padding: 16px 20px;\n      border-radius: 100px;\n      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);\n      transition: box-shadow 0.4s, background-color 0.2s;\n      user-select: none;\n      white-space: nowrap;\n      position: relative;\n      display: flex;\n      align-items: center;\n      overflow: hidden;\n\n      &:hover {\n        background-color: lighten($lightblue, 10%);\n        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);\n      }\n\n      &.-active {\n        pointer-events: none;\n        cursor: default;\n      }\n\n      > .cover {\n        width: 16px;\n        height: 16px;\n        position: absolute;\n        display: flex;\n        justify-content: center;\n        align-items: center;\n\n        > .check {\n          width: 100%;\n          height: 100%;\n          transform: translate(-100%, -73%) rotate(-45deg);\n          position: absolute;\n          left: 50%;\n          top: 50%;\n\n          &::before,\n          &::after {\n            content: \"\";\n            display: block;\n            background-color: $black;\n            position: absolute;\n            left: 0;\n            bottom: 0;\n            border-radius: 10px;\n          }\n\n          &::before {\n            width: 3px;\n            height: 50%;\n          }\n\n          &::after {\n            width: 100%;\n            height: 3px;\n          }\n        }\n      }\n    }\n  }\n}\n\n.cart-items {\n  position: relative;\n}\n\n.no-content {\n  position: relative;\n\n  > .text {\n    font-size: 14px;\n  }\n}\n\n.cart-item {\n  display: flex;\n  padding: 20px 0;\n\n  > .right {\n    > .name {\n      font-size: 14px;\n      font-weight: bold;\n      line-height: 1.5;\n      margin-bottom: 10px;\n    }\n\n    > .price {\n      font-size: 20px;\n      font-weight: bold;\n      margin-bottom: 16px;\n    }\n\n    > .count {\n      display: flex;\n      align-items: center;\n\n      > .number {\n        font-size: 14px;\n        margin: 0 14px;\n        width: 20px;\n        text-align: center;\n      }\n\n      .button {\n        cursor: pointer;\n        width: 28px;\n        height: 28px;\n        border-radius: 100%;\n        background-color: #eee;\n        font-size: 16px;\n        font-weight: bold;\n        display: flex;\n        justify-content: center;\n        align-items: center;\n        transition: 0.2s;\n        user-select: none;\n\n        &:hover {\n          background-color: #ddd;\n        }\n      }\n    }\n  }\n}\n\n.cart-image {\n  width: 90px;\n  height: 90px;\n  border-radius: 100%;\n  background-color: #eee;\n  margin-right: 34px;\n\n  > .image-wrapper {\n    > .image {\n      display: block;\n      width: 140%;\n      transform: rotate(-28deg) translateY(-40px);\n      filter: drop-shadow(0 30px 20px rgba(0, 0, 0, 0.2));\n    }\n  }\n}\n\n.buttonText-leave-active,\n.buttonText-enter-active {\n  transition: opacity 0.2s, top 0.35s;\n}\n.buttonText-leave-to,\n.buttonText-enter {\n  opacity: 0;\n}\n\n.cartList-enter-active {\n  transition: all 2s;\n\n  > .right {\n    > .name,\n    > .price {\n      transition: 0.4s;\n    }\n\n    > .name {\n      transition-delay: 0.7s;\n    }\n\n    > .price {\n      transition-delay: 0.85s;\n    }\n\n    > .count {\n      transition: opacity 0.4s;\n      transition-delay: 1s;\n    }\n  }\n\n  .cart-image {\n    transition: 0.5s cubic-bezier(0.79, 0.01, 0.22, 1);\n\n    > .image-wrapper {\n      transition: 0.5s cubic-bezier(0.79, 0.01, 0.22, 1) 0.1s;\n    }\n  }\n}\n\n.cartList {\n  &-enter {\n    > .right {\n      > .name,\n      > .price {\n        opacity: 0;\n        transform: translateX(30px);\n      }\n\n      .count {\n        opacity: 0;\n      }\n    }\n\n    .cart-image {\n      transform: scale(0);\n\n      > .image-wrapper {\n        transform: scale(0);\n      }\n    }\n  }\n\n  &-leave-active {\n    transition: 0.7s cubic-bezier(0.79, 0.01, 0.22, 1);\n    position: absolute;\n  }\n\n  &-leave-to {\n    transform: scale(0);\n    opacity: 0;\n  }\n\n  &-move {\n    transition: 0.7s cubic-bezier(0.79, 0.01, 0.22, 1);\n  }\n}\n\n.noContent {\n  &-enter-active,\n  &-leave-active {\n    transition: opacity 0.5s;\n    position: absolute;\n  }\n\n  &-enter,\n  &-leave-to {\n    opacity: 0;\n  }\n}\n</style>\n","body {\n  font-family: \"Rubik\", sans-serif;\n  color: #303841;\n}\n\n.wrapper {\n  height: 100vh;\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  position: relative;\n  flex-wrap: wrap;\n  padding: 40px 20px;\n  max-width: 720px;\n  margin: 0 auto;\n}\n.wrapper::before {\n  content: \"\";\n  display: block;\n  position: fixed;\n  width: 300%;\n  height: 100%;\n  top: 50%;\n  left: 50%;\n  border-radius: 100%;\n  transform: translateX(-50%) skewY(-8deg);\n  background-color: #0078FF;\n  z-index: -1;\n  animation: wave 8s ease-in-out infinite alternate;\n}\n@keyframes wave {\n  0% {\n    transform: translateX(-50%) skew(0deg, -8deg);\n  }\n  100% {\n    transform: translateX(-30%) skew(8deg, -4deg);\n  }\n}\n\n.screen {\n  background-color: #B4C8FF;\n  box-sizing: border-box;\n  width: 340px;\n  height: 600px;\n  box-shadow: 0 3.2px 2.2px rgba(0, 0, 0, 0.02), 0 7px 5.4px rgba(0, 0, 0, 0.028), 0 12.1px 10.1px rgba(0, 0, 0, 0.035), 0 19.8px 18.1px rgba(0, 0, 0, 0.042), 0 34.7px 33.8px rgba(0, 0, 0, 0.05), 0 81px 81px rgba(0, 0, 0, 0.07);\n  border-radius: 30px;\n  overflow-y: scroll;\n  padding: 0 28px;\n  position: relative;\n  margin-bottom: 20px;\n}\n.screen::before {\n  content: \"\";\n  display: block;\n  position: absolute;\n  width: 300px;\n  height: 300px;\n  border-radius: 100%;\n  background-color: #B4C8FF;\n  top: -20%;\n  left: -50%;\n  z-index: 0;\n}\n.screen::-webkit-scrollbar {\n  display: none;\n}\n.screen > .title {\n  font-size: 24px;\n  font-weight: bold;\n  margin: 20px 0;\n  position: relative;\n}\n\n.app-bar {\n  padding: 12px 0;\n  position: relative;\n}\n.app-bar > .logo {\n  display: block;\n  width: 50px;\n}\n\n.shop-items {\n  position: relative;\n}\n\n.item-block {\n  padding: 40px 0 70px;\n}\n.item-block:first-child {\n  padding-top: 0;\n}\n.item-block > .image-area {\n  border-radius: 30px;\n  height: 380px;\n  display: flex;\n  align-items: center;\n  overflow: hidden;\n}\n.item-block > .image-area > .image {\n  display: block;\n  width: 100%;\n  filter: drop-shadow(0 30px 20px rgba(0, 0, 0, 0.2));\n  transform: rotate(-24deg);\n  margin-left: -16px;\n}\n.item-block > .name {\n  font-size: 20px;\n  font-weight: bold;\n  margin: 26px 0 20px;\n  line-height: 1.5;\n}\n.item-block > .description {\n  font-size: 13px;\n  color: #777;\n  line-height: 1.8;\n  margin-bottom: 20px;\n}\n.item-block > .bottom-area {\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n}\n.item-block > .bottom-area > .price {\n  font-size: 18px;\n  font-weight: bold;\n}\n.item-block > .bottom-area > .button {\n  cursor: pointer;\n  background-color: #0078FF;\n  font-weight: bold;\n  font-size: 14px;\n  box-sizing: border-box;\n  height: 46px;\n  padding: 16px 20px;\n  border-radius: 100px;\n  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);\n  transition: box-shadow 0.4s, background-color 0.2s;\n  user-select: none;\n  white-space: nowrap;\n  position: relative;\n  display: flex;\n  align-items: center;\n  overflow: hidden;\n}\n.item-block > .bottom-area > .button:hover {\n  background-color: #e7edff;\n  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);\n}\n.item-block > .bottom-area > .button.-active {\n  pointer-events: none;\n  cursor: default;\n}\n.item-block > .bottom-area > .button > .cover {\n  width: 16px;\n  height: 16px;\n  position: absolute;\n  display: flex;\n  justify-content: center;\n  align-items: center;\n}\n.item-block > .bottom-area > .button > .cover > .check {\n  width: 100%;\n  height: 100%;\n  transform: translate(-100%, -73%) rotate(-45deg);\n  position: absolute;\n  left: 50%;\n  top: 50%;\n}\n.item-block > .bottom-area > .button > .cover > .check::before, .item-block > .bottom-area > .button > .cover > .check::after {\n  content: \"\";\n  display: block;\n  background-color: #303841;\n  position: absolute;\n  left: 0;\n  bottom: 0;\n  border-radius: 10px;\n}\n.item-block > .bottom-area > .button > .cover > .check::before {\n  width: 3px;\n  height: 50%;\n}\n.item-block > .bottom-area > .button > .cover > .check::after {\n  width: 100%;\n  height: 3px;\n}\n\n.cart-items {\n  position: relative;\n}\n\n.no-content {\n  position: relative;\n}\n.no-content > .text {\n  font-size: 14px;\n}\n\n.cart-item {\n  display: flex;\n  padding: 20px 0;\n}\n.cart-item > .right > .name {\n  font-size: 14px;\n  font-weight: bold;\n  line-height: 1.5;\n  margin-bottom: 10px;\n}\n.cart-item > .right > .price {\n  font-size: 20px;\n  font-weight: bold;\n  margin-bottom: 16px;\n}\n.cart-item > .right > .count {\n  display: flex;\n  align-items: center;\n}\n.cart-item > .right > .count > .number {\n  font-size: 14px;\n  margin: 0 14px;\n  width: 20px;\n  text-align: center;\n}\n.cart-item > .right > .count .button {\n  cursor: pointer;\n  width: 28px;\n  height: 28px;\n  border-radius: 100%;\n  background-color: #eee;\n  font-size: 16px;\n  font-weight: bold;\n  display: flex;\n  justify-content: center;\n  align-items: center;\n  transition: 0.2s;\n  user-select: none;\n}\n.cart-item > .right > .count .button:hover {\n  background-color: #ddd;\n}\n\n.cart-image {\n  width: 90px;\n  height: 90px;\n  border-radius: 100%;\n  background-color: #eee;\n  margin-right: 34px;\n}\n.cart-image > .image-wrapper > .image {\n  display: block;\n  width: 140%;\n  transform: rotate(-28deg) translateY(-40px);\n  filter: drop-shadow(0 30px 20px rgba(0, 0, 0, 0.2));\n}\n\n.buttonText-leave-active,\n.buttonText-enter-active {\n  transition: opacity 0.2s, top 0.35s;\n}\n\n.buttonText-leave-to,\n.buttonText-enter {\n  opacity: 0;\n}\n\n.cartList-enter-active {\n  transition: all 2s;\n}\n.cartList-enter-active > .right > .name,\n.cartList-enter-active > .right > .price {\n  transition: 0.4s;\n}\n.cartList-enter-active > .right > .name {\n  transition-delay: 0.7s;\n}\n.cartList-enter-active > .right > .price {\n  transition-delay: 0.85s;\n}\n.cartList-enter-active > .right > .count {\n  transition: opacity 0.4s;\n  transition-delay: 1s;\n}\n.cartList-enter-active .cart-image {\n  transition: 0.5s cubic-bezier(0.79, 0.01, 0.22, 1);\n}\n.cartList-enter-active .cart-image > .image-wrapper {\n  transition: 0.5s cubic-bezier(0.79, 0.01, 0.22, 1) 0.1s;\n}\n\n.cartList-enter > .right > .name,\n.cartList-enter > .right > .price {\n  opacity: 0;\n  transform: translateX(30px);\n}\n.cartList-enter > .right .count {\n  opacity: 0;\n}\n.cartList-enter .cart-image {\n  transform: scale(0);\n}\n.cartList-enter .cart-image > .image-wrapper {\n  transform: scale(0);\n}\n.cartList-leave-active {\n  transition: 0.7s cubic-bezier(0.79, 0.01, 0.22, 1);\n  position: absolute;\n}\n.cartList-leave-to {\n  transform: scale(0);\n  opacity: 0;\n}\n.cartList-move {\n  transition: 0.7s cubic-bezier(0.79, 0.01, 0.22, 1);\n}\n\n.noContent-enter-active, .noContent-leave-active {\n  transition: opacity 0.5s;\n  position: absolute;\n}\n.noContent-enter, .noContent-leave-to {\n  opacity: 0;\n}\n\n/*# sourceMappingURL=pen.vue.map */"]}, media: undefined });
-
-  };
-  /* scoped */
-  const __vue_scope_id__ = undefined;
-  /* module identifier */
-  const __vue_module_identifier__ = undefined;
-  /* functional template */
-  const __vue_is_functional_template__ = false;
-  /* style inject SSR */
-  
-  /* style inject shadow dom */
-  
-
-  
-  const __vue_component__ = /*#__PURE__*/normalizeComponent(
-    { render: __vue_render__, staticRenderFns: __vue_staticRenderFns__ },
-    __vue_inject_styles__,
-    __vue_script__,
-    __vue_scope_id__,
-    __vue_is_functional_template__,
-    __vue_module_identifier__,
-    false,
-    createInjector,
-    undefined,
-    undefined
-  );
-
-export default __vue_component__;
+    };
+    return (React.createElement("div", { id: "app-background", onClick: handleOnClick },
+        React.createElement("div", { id: "app-background-image", className: "background-image" })));
+};
+const Loading = () => {
+    return (React.createElement("div", { id: "app-loading-icon" },
+        React.createElement("i", { className: "fa-solid fa-spinner-third" })));
+};
+const AppContext = React.createContext(null);
+const App = () => {
+    const [userStatus, setUserStatusTo] = React.useState(UserStatus.LoggedOut);
+    const getStatusClass = () => {
+        return userStatus.replace(/\s+/g, "-").toLowerCase();
+    };
+    return (React.createElement(AppContext.Provider, { value: { userStatus, setUserStatusTo } },
+        React.createElement("div", { id: "app", className: getStatusClass() },
+            React.createElement(Info, { id: "app-info" }),
+            React.createElement(Pin, null),
+            React.createElement(Menu, null),
+            React.createElement(Background, null),
+            React.createElement("div", { id: "sign-in-button-wrapper" },
+                React.createElement(UserStatusButton, { icon: "fa-solid fa-arrow-right-to-arc", id: "sign-in-button", userStatus: UserStatus.LoggingIn })),
+            React.createElement(Loading, null))));
+};
+ReactDOM.render(React.createElement(App, null), document.getElementById("root"));
