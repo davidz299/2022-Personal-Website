@@ -19,6 +19,7 @@ var script = {
         const newItem = Object.assign({}, item, { count: 1 });
         this.$data.cartItems.push(newItem);
 
+        
         const animationTarget = this.$refs[`addButton${item.id}`];
         gsap.to(animationTarget, {
           width: 46,
@@ -31,6 +32,7 @@ var script = {
       });
     },
 
+    
     decrement(item) {
       item.count--;
       const targetShopItem = this.$data.shopItems.find(
