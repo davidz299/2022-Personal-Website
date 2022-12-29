@@ -1,4 +1,3 @@
-
 "use strict";
 var UserStatus;
 (function (UserStatus) {
