@@ -1,3 +1,4 @@
+
 $(document).ready(function () {
   // typing animation
   (function ($) {
