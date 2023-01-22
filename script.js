@@ -8,7 +8,7 @@ $(document).ready(function () {
       setInterval(function () {
         if (current < contentArray.length) {
           elem.text(elem.text() + contentArray[current++]);
-        }
+        } 
       }, 80);
     };
   })(jQuery);
