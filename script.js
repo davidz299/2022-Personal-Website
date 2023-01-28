@@ -178,7 +178,7 @@ $(document).ready(function () {
       e.preventDefault();
 
       // Serialize the form data.
-      var formData = $(form).serialize();
+       var formData = $(form).serialize();
 
       // Submit the form using AJAX.
       $.ajax({
