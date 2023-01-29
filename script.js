@@ -50,7 +50,7 @@ $(document).ready(function () {
         {
           right: "0px"
         },
-        200
+        300
       );
     });
 
