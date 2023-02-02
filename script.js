@@ -164,7 +164,7 @@ $(document).ready(function () {
     });
   });
 
-  //ajax form
+  //ajax implementation, form calling and receiving 
   $(function () {
     // Get the form.
     var form = $("#ajax-contact");
