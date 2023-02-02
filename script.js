@@ -169,7 +169,7 @@ $(document).ready(function () {
     // Get the form.
     var form = $("#ajax-contact");
 
-    // Get the messages div.
+    // Get the messages div. and input into formMessages
     var formMessages = $("#form-messages");
 
     // Set up an event listener for the contact form.
