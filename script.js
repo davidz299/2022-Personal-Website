@@ -191,7 +191,7 @@ $(document).ready(function () {
           $(formMessages).removeClass("error");
           $(formMessages).addClass("success");
 
-          // Set the message text.
+          // Set the message text, using formMessages.
           $(formMessages).text(response);
 
           // Clear the form.
