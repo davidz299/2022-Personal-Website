@@ -113,7 +113,7 @@ $(document).ready(function () {
             .animate(
               {
                 width: $(this).attr("data-percent")
-              },
+              }, 
               2500
             );
         });
