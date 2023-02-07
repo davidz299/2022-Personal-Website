@@ -139,7 +139,7 @@ $(document).ready(function () {
     $.fn.fullpage.moveTo(4);
   });
 
-  // smooth scrolling
+  // smooth scrolling effect
   $(function () {
     $("a[href*=#]:not([href=#])").click(function () {
       if (
