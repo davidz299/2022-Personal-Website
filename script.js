@@ -103,7 +103,7 @@ $(document).ready(function () {
         });
         $(".header-links").css("background-color", "white");
       }
-
+      /* add opacity to arrow */
       //using index
       if (index == 2) {
         /* animate skill bars */
