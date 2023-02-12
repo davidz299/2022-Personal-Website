@@ -180,7 +180,7 @@ $(document).ready(function () {
       // Serialize the form data.
        var formData = $(form).serialize();
 
-      // Submit the form using AJAX.
+      // Submit the form through the AJAX system
       $.ajax({
         type: "POST",
         url: $(form).attr("action"),
