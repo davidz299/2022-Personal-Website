@@ -87,7 +87,7 @@ $(document).ready(function () {
     afterLoad: function (anchorLink, index) {
       var loadedSection = $(this);
 
-      //using index
+      // using index
       if (index == 1) {
         /* add opacity to arrow */
         $(".fa-chevron-down").each(function () {
