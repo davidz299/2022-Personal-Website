@@ -204,7 +204,7 @@ $(document).ready(function () {
           $(formMessages).removeClass("success");
           $(formMessages).addClass("error");
 
-          // Set the message text.
+          // Set the user message text.
           if (data.responseText !== "") {
             $(formMessages).text(data.responseText);
           } else {
