@@ -9,7 +9,7 @@ $(document).ready(function () {
         if (current < contentArray.length) {
           elem.text(elem.text() + contentArray[current++]);
         } 
-      }, 80);
+      }, 90);
     };
   })(jQuery);
   
