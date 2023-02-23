@@ -13,7 +13,7 @@ $(document).ready(function () {
     };
   })(jQuery);
   
-  // input text for typing animation
+  // text for typing animation
   $("#holder").writeText("Software Engineer, Featured on CBC News");
 
   // initialize wow.js
