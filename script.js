@@ -194,7 +194,7 @@ $(document).ready(function () {
           // Set the message text, using formMessages.
           $(formMessages).text(response);
 
-          // Clear the form.
+          // Clear the form and reset.
           $("#name").val("");
           $("#email").val("");
           $("#message").val("");
